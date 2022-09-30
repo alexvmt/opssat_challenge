@@ -1,10 +1,12 @@
 # opssat_challenge
 
 Competition: https://kelvins.esa.int/opssat/
+
 Data: https://zenodo.org/record/6524750
+
 Starter kit: https://gitlab.com/EuropeanSpaceAgency/the_opssat_case_starter_kit
 
-Key questions
+Key questions:
 
 - How to best augment images, i. e. increase amount of images?
 - What's the best validation strategy?
