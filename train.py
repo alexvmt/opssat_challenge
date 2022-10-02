@@ -1,18 +1,31 @@
 #!/bin/python
 
-import tensorflow as tf
-from tensorflow import keras
+seed = 42
+
+import os
+os.environ['PYTHONHASHSEED'] = str(seed)
+
+import random
+random.seed(seed)
+
 import numpy as np
+np.random.seed(seed)
+
+import tensorflow as tf
+tf.random.set_seed(seed)
+tf.compat.v1.set_random_seed
+
+from tensorflow import keras
+import matplotlib.pyplot as plt
+from sklearn.utils import shuffle
 from sklearn import metrics
 from efficientnet_lite import EfficientNetLiteB0
-
-seed = 42
 
 def get_images_from_path(dataset_path):
     """ Get images from path and normalize them applying channel-level normalization. """
 
     # loading all images in one large batch
-    tf_eval_data = tf.keras.utils.image_dataset_from_directory(dataset_path, image_size=input_shape[:2], shuffle=True, seed=seed,
+    tf_eval_data = tf.keras.utils.image_dataset_from_directory(dataset_path, image_size=input_shape[:2], shuffle=False,
                                                                batch_size=100000)
 
     # extract images and targets
@@ -44,63 +57,73 @@ dataset_path="../ops_sat_competiton_official"
 #Loading dataset
 x_train, y_train = get_images_from_path(dataset_path)
 
-x_train_rot90_ccw = np.rot90(x_train.numpy().astype(int), axes=(1,2))
-x_train_augmented = tf.convert_to_tensor(np.vstack([x_train.numpy(), x_train_rot90_ccw]))
-y_train_augmented = tf.convert_to_tensor(np.concatenate([y_train.numpy(), y_train.numpy()]), dtype=np.int32)
+x_train = x_train.numpy().astype(np.int32)
+y_train = y_train.numpy()
 
-x_train_rot180 = np.rot90(np.rot90(x_train.numpy().astype(int), axes=(1,2)), axes=(1,2))
-x_train_augmented = tf.convert_to_tensor(np.vstack([x_train_augmented.numpy(), x_train_rot180]))
-y_train_augmented = tf.convert_to_tensor(np.concatenate([y_train_augmented.numpy(), y_train.numpy()]), dtype=np.int32)
+x_train_rot90_ccw = np.rot90(x_train, axes=(1,2))
+x_train_augmented = np.vstack([x_train, x_train_rot90_ccw])
+y_train_augmented = np.concatenate([y_train, y_train])
 
-x_train_rot90_cw = np.rot90(x_train.numpy().astype(int), axes=(2,1))
-x_train_augmented = tf.convert_to_tensor(np.vstack([x_train_augmented.numpy(), x_train_rot90_cw]))
-y_train_augmented = tf.convert_to_tensor(np.concatenate([y_train_augmented.numpy(), y_train.numpy()]), dtype=np.int32)
+x_train_rot180 = np.rot90(np.rot90(x_train, axes=(1,2)), axes=(1,2))
+x_train_augmented = np.vstack([x_train_augmented, x_train_rot180])
+y_train_augmented = np.concatenate([y_train_augmented, y_train])
 
-x_train_flipud = np.array([np.flipud(i.numpy().astype(int)) for i in x_train])
-x_train_augmented = tf.convert_to_tensor(np.vstack([x_train_augmented.numpy(), x_train_flipud]))
-y_train_augmented = tf.convert_to_tensor(np.concatenate([y_train_augmented.numpy(), y_train.numpy()]), dtype=np.int32)
+x_train_rot90_cw = np.rot90(x_train, axes=(2,1))
+x_train_augmented = np.vstack([x_train_augmented, x_train_rot90_cw])
+y_train_augmented = np.concatenate([y_train_augmented, y_train])
 
-x_train_fliplr = np.array([np.fliplr(i.numpy().astype(int)) for i in x_train])
-x_train_augmented = tf.convert_to_tensor(np.vstack([x_train_augmented.numpy(), x_train_fliplr]))
-y_train_augmented = tf.convert_to_tensor(np.concatenate([y_train_augmented.numpy(), y_train.numpy()]), dtype=np.int32)
+x_train_flipud = np.array([np.flipud(i) for i in x_train])
+x_train_augmented = np.vstack([x_train_augmented, x_train_flipud])
+y_train_augmented = np.concatenate([y_train_augmented, y_train])
+
+x_train_fliplr = np.array([np.fliplr(i) for i in x_train])
+x_train_augmented = np.vstack([x_train_augmented, x_train_fliplr])
+y_train_augmented = np.concatenate([y_train_augmented, y_train])
 
 x_train_rot90_ccw_flipud = np.array([np.flipud(i) for i in x_train_rot90_ccw])
-x_train_augmented = tf.convert_to_tensor(np.vstack([x_train_augmented.numpy(), x_train_rot90_ccw_flipud]))
-y_train_augmented = tf.convert_to_tensor(np.concatenate([y_train_augmented.numpy(), y_train.numpy()]), dtype=np.int32)
+x_train_augmented = np.vstack([x_train_augmented, x_train_rot90_ccw_flipud])
+y_train_augmented = np.concatenate([y_train_augmented, y_train])
 
 x_train_rot90_cw_flipud = np.array([np.flipud(i) for i in x_train_rot90_cw])
-x_train_augmented = tf.convert_to_tensor(np.vstack([x_train_augmented.numpy(), x_train_rot90_cw_flipud]))
-y_train_augmented = tf.convert_to_tensor(np.concatenate([y_train_augmented.numpy(), y_train.numpy()]), dtype=np.int32)
+x_train_augmented = np.vstack([x_train_augmented, x_train_rot90_cw_flipud])
+y_train_augmented = np.concatenate([y_train_augmented, y_train])
 
-np.random.seed(seed)
+x_train_augmented, y_train_augmented = shuffle(x_train_augmented, y_train_augmented, random_state=seed)
 
-x_train_noise = np.array([np.round(i + (np.random.normal(i.numpy(), 0.2 * i.numpy())), 0) for i in x_train_augmented])
-x_train_augmented = tf.convert_to_tensor(np.vstack([x_train_augmented.numpy(), x_train_noise]))
-y_train_augmented = tf.convert_to_tensor(np.concatenate([y_train_augmented.numpy(), y_train_augmented.numpy()]), dtype=np.int32)
+factor = 0.1
+share = 0.5
+max_index = int(round(x_train_augmented.shape[0] * share, 0))
 
-print('x train shape: {}; y train shape: {}'.format(x_train_augmented.shape, y_train_augmented.shape))
+x_train_noise = np.array([np.round(i + (np.random.normal(i, factor * i)), 0) for i in x_train_augmented[:max_index]]).astype(np.int32)
+#x_train_augmented = np.vstack([x_train_augmented, x_train_noise])
+#y_train_augmented = np.concatenate([y_train_augmented, y_train_augmented[:max_index]])
+
+x_train_augmented, y_train_augmented = shuffle(x_train_augmented, y_train_augmented, random_state=seed)
+
+x_train = tf.convert_to_tensor(x_train_augmented)
+y_train = tf.convert_to_tensor(y_train_augmented, dtype=np.int32)
+
+print('x train shape: {}; y train shape: {}'.format(x_train.shape, y_train.shape))
 
 model.compile(optimizer='adam',
               loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True), metrics=[keras.metrics.SparseCategoricalAccuracy()])
 
-tf.random.set_seed(seed)
-
 callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
 
-history=model.fit(x_train_augmented, y_train_augmented, epochs=55, verbose=1, batch_size=8, callbacks=[callback], validation_split=0.2)
+history=model.fit(x_train, y_train, epochs=100, verbose=1, batch_size=8, callbacks=[callback], validation_split=0.2, shuffle=False)
 
-predictions = evaluate_model(x_train_augmented, y_train_augmented)
+predictions = evaluate_model(x_train, y_train)
 
-print('Accuracy: {:0.3f}'.format(round(metrics.accuracy_score(y_train_augmented, predictions), 3)))
+print('Accuracy: {:0.3f}'.format(round(metrics.accuracy_score(y_train, predictions), 3)))
 
 # What proportion of positive identifications was actually correct?
-print('Precision: {:0.3f}'.format(round(metrics.precision_score(y_train_augmented, predictions, average='micro'), 3)))
+print('Precision: {:0.3f}'.format(round(metrics.precision_score(y_train, predictions, average='micro'), 3)))
 
 # What proportion of actual positives was identified correctly?
-print('Recall: {:0.3f}'.format(round(metrics.recall_score(y_train_augmented, predictions, average='micro'), 3)))
+print('Recall: {:0.3f}'.format(round(metrics.recall_score(y_train, predictions, average='micro'), 3)))
 
-print('F1-Score: {:0.3f}'.format(round(metrics.f1_score(y_train_augmented, predictions, average='micro'), 3)))
+print('F1-Score: {:0.3f}'.format(round(metrics.f1_score(y_train, predictions, average='micro'), 3)))
 
-print(metrics.classification_report(y_train_augmented, predictions))
+print(metrics.classification_report(y_train, predictions))
 
-#model.save_weights('v12.h5')
+#model.save_weights('v25.h5')
