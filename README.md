@@ -1,10 +1,14 @@
-# opssat_challenge
+# OPS-SAT Challenge
 
 Competition: https://kelvins.esa.int/opssat/
 
 Data: https://zenodo.org/record/6524750
 
 Starter kit: https://gitlab.com/EuropeanSpaceAgency/the_opssat_case_starter_kit
+
+Here are the provided tiles for the mountain class to get an idea of what the images look like:
+
+![mountains](mountains.png 'mountains')
 
 Key questions and observations:
 
